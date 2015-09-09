@@ -1,0 +1,10 @@
+Currently only an inmemory filesystem, it is uncomplete and has several places that need some work:
+
+- readlink is not working properly
+- the xattr stuff is just there so it stores stuff
+- rename is not keeping track of the references
+- statfs is also just there (copied from the example from fusepy)
+- propably many thins more
+
+
+It does what I wanted it to do, nothing more nothing less
