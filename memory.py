@@ -85,15 +85,8 @@ class SymLinkNode(FileNode):
 
 
 class Memory(LoggingMixIn, Operations):
-    'Example memory filesystem. Supports only one level of files.'
-
     def __init__(self):
-        self.files = {}
-        self.data = defaultdict(bytes)
         self.fd = 0
-        now = time()
-        self.files['/'] = dict(st_mode=(S_IFDIR | 0755), st_ctime=now,
-                               st_mtime=now, st_atime=now, st_nlink=2)
         self.fs_root = DirNode(mode=0755)
 
     def chmod(self, path, mode):
@@ -152,10 +145,10 @@ class Memory(LoggingMixIn, Operations):
         return node.data
 
     def removexattr(self, path, name):
-        attrs = self.files[path].get('attrs', {})
+        node = self.get_node(path)
 
         try:
-            del attrs[name]
+            del node.xattr[name]
         except KeyError:
             pass        # Should return ENOATTR
 
