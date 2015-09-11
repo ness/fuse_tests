@@ -97,44 +97,40 @@ class Memory(LoggingMixIn, Operations):
         self.fs_root = DirNode(mode=0755)
 
     def chmod(self, path, mode):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         node.mode &= 0770000
         node.mode |= mode
         return 0
 
     def chown(self, path, uid, gid):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         node.uid = uid
         node.gid = gid
 
     def create(self, path, mode):
-        parts = path.rsplit('/', 1)
-        parent_path = parts[0]
-        filename = parts[1]
-        parent_node = self.fs_root.find_node(parent_path)
+        parent_path, filename = path.rsplit('/', 1)
+        parent_node = self.get_node(parent_path)
         parent_node.entries[filename] = FileNode(mode=mode)
         self.fd += 1
         return self.fd
 
     def getattr(self, path, fh=None):
-        return self.fs_root.find_node(path).attrs
+        return self.get_node(path).attrs
 
     def getxattr(self, path, name, position=0):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         try:
             return node.xattrs[name]
         except KeyError:
             raise FuseOSError(ENODATA)       # Should return ENOATTR
 
     def listxattr(self, path):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         return node.xattrs.keys()
 
     def mkdir(self, path, mode):
-        parts = path.rsplit('/', 1)
-        parent_path = parts[0]
-        filename = parts[1]
-        parent_node = self.fs_root.find_node(parent_path)
+        parent_path, filename = path.rsplit('/', 1)
+        parent_node = self.get_node(parent_path)
         parent_node.entries[filename] = DirNode(mode=mode)
         parent_node.nlink += 1
 
@@ -143,16 +139,16 @@ class Memory(LoggingMixIn, Operations):
         return self.fd
 
     def read(self, path, size, offset, fh):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         return node.data[offset:offset + size]
 
     def readdir(self, path, fh):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         content = ['.', '..'] + node.entries.keys()
         return content
 
     def readlink(self, path):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         return node.data
 
     def removexattr(self, path, name):
@@ -165,68 +161,61 @@ class Memory(LoggingMixIn, Operations):
 
     def rename(self, old_path, new_path):
         # TODO: update nlink on old dir and on new - needed when moving_node is a dir
-        moving_node = self.fs_root.find_node(old_path)
+        moving_node = self.get_node(old_path)
 
-        parts = new_path.rsplit('/', 1)
-        parent_path = parts[0]
-        filename = parts[1]
-        parent_node = self.fs_root.find_node(parent_path)
+        parent_path, filename = new_path.rsplit('/', 1)
+        parent_node = self.get_node(parent_path)
         parent_node.entries[filename] = moving_node
 
         # remove old dir entry
-        parts = old_path.rsplit('/', 1)
-        parent_path = parts[0]
-        filename = parts[1]
-        parent_node = self.fs_root.find_node(parent_path)
+        parent_path, filename = old_path.rsplit('/', 1)
+        parent_node = self.get_node(parent_path)
         del parent_node.entries[filename]
 
     def rmdir(self, path):
-        parts = path.rsplit('/', 1)
-        parent_path = parts[0]
-        filename = parts[1]
-        parent_node = self.fs_root.find_node(parent_path)
+        parent_path, filename = path.rsplit('/', 1)
+        parent_node = self.get_node(parent_path)
         del parent_node.entries[filename]
         parent_node.nlink -= 1
 
     def setxattr(self, path, name, value, options, position=0):
         # Ignore options
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         node.xattrs[name] = value
 
     def statfs(self, path):
         return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
 
     def symlink(self, target, source):
-        parts = target.rsplit('/', 1)
-        parent_path = parts[0]
-        filename = parts[1]
-        parent_node = self.fs_root.find_node(parent_path)
+        parent_path, filename = target.rsplit('/', 1)
+        parent_node = self.get_node(parent_path)
         symlink = SymLinkNode(mode=0777)
         symlink.data = source
         parent_node.entries[filename] = symlink
 
     def truncate(self, path, length, fh=None):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         node.data = node.data[:length]
 
     def unlink(self, path):
-        parts = path.rsplit('/', 1)
-        parent_path = parts[0]
-        filename = parts[1]
-        parent_node = self.fs_root.find_node(parent_path)
+        parent_path, filename = path.rsplit('/', 1)
+        parent_node = self.get_node(parent_path)
         del parent_node.entries[filename]
 
     def utimens(self, path, times=None):
         now = time()
         atime, mtime = times if times else (now, now)
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         node.atime = atime
         node.mtime = mtime
 
     def write(self, path, data, offset, fh):
-        node = self.fs_root.find_node(path)
+        node = self.get_node(path)
         node.data = node.data[:offset] + data
         return len(data)
+
+    def get_node(self, path):
+        return self.fs_root.find_node(path)
 
 
 if __name__ == '__main__':
