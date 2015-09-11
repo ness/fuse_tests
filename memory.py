@@ -108,7 +108,7 @@ class Memory(LoggingMixIn, Operations):
         node.gid = gid
 
     def create(self, path, mode):
-        parent_path, filename = path.rsplit('/', 1)
+        parent_path, filename = self.split_parent_and_filename(path)
         parent_node = self.get_node(parent_path)
         parent_node.entries[filename] = FileNode(mode=mode)
         self.fd += 1
@@ -129,7 +129,7 @@ class Memory(LoggingMixIn, Operations):
         return node.xattrs.keys()
 
     def mkdir(self, path, mode):
-        parent_path, filename = path.rsplit('/', 1)
+        parent_path, filename = self.split_parent_and_filename(path)
         parent_node = self.get_node(parent_path)
         parent_node.entries[filename] = DirNode(mode=mode)
         parent_node.nlink += 1
@@ -163,17 +163,17 @@ class Memory(LoggingMixIn, Operations):
         # TODO: update nlink on old dir and on new - needed when moving_node is a dir
         moving_node = self.get_node(old_path)
 
-        parent_path, filename = new_path.rsplit('/', 1)
+        parent_path, filename = self.split_parent_and_filename(new_path)
         parent_node = self.get_node(parent_path)
         parent_node.entries[filename] = moving_node
 
         # remove old dir entry
-        parent_path, filename = old_path.rsplit('/', 1)
+        parent_path, filename = self.split_parent_and_filename(old_path)
         parent_node = self.get_node(parent_path)
         del parent_node.entries[filename]
 
     def rmdir(self, path):
-        parent_path, filename = path.rsplit('/', 1)
+        parent_path, filename = self.split_parent_and_filename(path)
         parent_node = self.get_node(parent_path)
         del parent_node.entries[filename]
         parent_node.nlink -= 1
@@ -187,7 +187,7 @@ class Memory(LoggingMixIn, Operations):
         return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
 
     def symlink(self, target, source):
-        parent_path, filename = target.rsplit('/', 1)
+        parent_path, filename = self.split_parent_and_filename(target)
         parent_node = self.get_node(parent_path)
         symlink = SymLinkNode(mode=0777)
         symlink.data = source
@@ -198,7 +198,7 @@ class Memory(LoggingMixIn, Operations):
         node.data = node.data[:length]
 
     def unlink(self, path):
-        parent_path, filename = path.rsplit('/', 1)
+        parent_path, filename = self.split_parent_and_filename(path)
         parent_node = self.get_node(parent_path)
         del parent_node.entries[filename]
 
@@ -216,6 +216,9 @@ class Memory(LoggingMixIn, Operations):
 
     def get_node(self, path):
         return self.fs_root.find_node(path)
+
+    def split_parent_and_filename(self, path):
+        return path.rsplit('/', 1)
 
 
 if __name__ == '__main__':
